@@ -1,0 +1,61 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+
+enum PedidoStatus {
+  PENDIENTE
+  ENTREGADO
+  CANCELADO
+}
+//! importante, para mi, los nombres de los modelos deberia ser en minuscula y en plural, pero prisma me obliga a ponerlos en mayuscula y en singular, asi que lo dejo asi, aunque no me guste
+
+model Pedido {
+  id          String @id @default(uuid())
+  montoTotal Float
+  totalItems  Int
+
+  status PedidoStatus @default(PENDIENTE)
+  pagado   Boolean     @default(false)
+  pagadoEn DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+
+
+  //? inicio para las relaciones entre las tablas con prisma
+  //! DEBERIA SER EN MINUSCULA PERO EL AUTOCOMPLETADO ME LO COLOCO ASI Y NO LO CAMBIÉ
+  PedidoItems PedidoItem[] // un pedido puede tener muchos items, es una relacion uno a muchos
+  //? fin en las relaciones entre las tablas
+
+  // Mapea este modelo a la tabla 'pedidos'
+  @@map("pedidos") // para asignarle el nombre a la tabla
+}
+
+model PedidoItem {
+  id        String @id @default(uuid())
+  productoId Int // es entero, ya que para probar diversidad, dejamos este id numerico y lo de este microservicios como uuid, lo recomendado es que todos sean uuid
+  cantidad  Int
+  precio    Float // precio del producto para el momento de la venta, se debe guardar por si mas adelante cambia, saber en cuanto se vendió
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  //? Relación con el modelo Pedido
+  pedidoId String
+  pedido   Pedido @relation(fields: [pedidoId], references: [id])
+  //? fin en las relaciones entre las tablas
+
+  @@map("pedido_items") // para asignarle el nombre a la tabla
+}
