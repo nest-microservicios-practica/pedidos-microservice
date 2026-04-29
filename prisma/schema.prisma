@@ -12,31 +12,33 @@ datasource db {
   provider = "postgresql"
 }
 
-
 enum PedidoStatus {
   PENDIENTE
+  PAGADO
   ENTREGADO
   CANCELADO
 }
+
 //! importante, para mi, los nombres de los modelos deberia ser en minuscula y en plural, pero prisma me obliga a ponerlos en mayuscula y en singular, asi que lo dejo asi, aunque no me guste
 
 model Pedido {
-  id          String @id @default(uuid())
+  id         String @id @default(uuid())
   montoTotal Float
-  totalItems  Int
+  totalItems Int
 
-  status PedidoStatus @default(PENDIENTE)
-  pagado   Boolean     @default(false)
-  pagadoEn DateTime?
+  status       PedidoStatus @default(PENDIENTE)
+  pagado       Boolean      @default(false)
+  pagadoEn     DateTime?
+  // va a ser nulo cuando el pedido no haya sido pagado,
+  stripePagoId String? // para guardar el id del cargo de stripe, por si necesitamos hacer un reembolso o algo relacionado con el pago
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-
-
   //? inicio para las relaciones entre las tablas con prisma
-  //! DEBERIA SER EN MINUSCULA PERO EL AUTOCOMPLETADO ME LO COLOCO ASI Y NO LO CAMBIÉ
-  PedidoItems PedidoItem[] // un pedido puede tener muchos items, es una relacion uno a muchos
+  //! DEBERIA SER EN MINUSCULA PERO EL ME LO COLOCO ASI Y NO LO CAMBIÉ
+  PedidoItems   PedidoItem[] // un pedido puede tener muchos items, es una relacion uno a muchos
+  PedidoRecibos PedidoRecibos? // un pedido puede tener un recibo de pago, es una relacion uno a uno, es opcional porque el pedido puede no haber sido pagado
   //? fin en las relaciones entre las tablas
 
   // Mapea este modelo a la tabla 'pedidos'
@@ -44,10 +46,10 @@ model Pedido {
 }
 
 model PedidoItem {
-  id        String @id @default(uuid())
+  id         String @id @default(uuid())
   productoId Int // es entero, ya que para probar diversidad, dejamos este id numerico y lo de este microservicios como uuid, lo recomendado es que todos sean uuid
-  cantidad  Int
-  precio    Float // precio del producto para el momento de la venta, se debe guardar por si mas adelante cambia, saber en cuanto se vendió
+  cantidad   Int
+  precio     Float // precio del producto para el momento de la venta, se debe guardar por si mas adelante cambia, saber en cuanto se vendió
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -59,3 +61,22 @@ model PedidoItem {
 
   @@map("pedido_items") // para asignarle el nombre a la tabla
 }
+
+model PedidoRecibos {
+  id        String @id @default(uuid())
+  pedidoId  String @unique // un recibo de pago solo puede estar asociado a un pedido, es una relacion uno a uno, por eso es unico
+  reciboUrl String
+  //? Relación con el modelo Pedido
+  pedido    Pedido @relation(fields: [pedidoId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Mapea este modelo a la tabla 'pedido_recibos'
+  @@map("pedido_recibos") // para asignarle el nombre a la tabla
+}
+
+
+//! si creamos modelos 'tablas de base de datos', o agregamo algun elemento a un modelo o tabla,
+//! debemos ejecutar el comando 'npx prisma migrate dev --name nombre-de-mi-migracion' para que se apliquen los cambios en la base de datos,
+//! y luego 'npx prisma generate' para que se actualice el cliente de prisma con los nuevos cambios, esto es importante para evitar errores al momento de usar el cliente de prisma en nuestro codigo, ya que si no se actualiza el cliente, este no va a reconocer los nuevos cambios en la base de datos y va a lanzar errores.

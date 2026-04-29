@@ -1,13 +1,15 @@
-import { HttpStatus, Inject, Injectable } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { ClientProxy, RpcException } from '@nestjs/microservices';
 import { catchError, firstValueFrom } from 'rxjs';
 
-import { CambiarEstatusPedidoDto, CreatePedidoDto, PaginationPedidoDto } from './dto/';
+import { CambiarEstatusPedidoDto, CreatePedidoDto, PaginationPedidoDto, PedidoPagadoDto } from './dto/';
 import { PrismaService } from 'src/prisma.service';
 import { NATS_SERVICE } from 'src/config';
+import { PedidoConProductos } from './interfaces';
 
 @Injectable()
 export class PedidosService {
+  private logger = new Logger('PedidosService');
 
   constructor(
     private prisma: PrismaService,
@@ -152,5 +154,56 @@ export class PedidosService {
         status: HttpStatus.INTERNAL_SERVER_ERROR
       });
     }
+  }
+
+
+  // este metdo es para comunicarse con el microservicio de pagos y crear una sesion de pago en stripe,
+  // para eso le envio la data del pedido con productos,
+  // y el microservicio de pagos se encarga de crear la sesion de pago en stripe y retornar la url de la sesion de pago
+  //  -- esto ya seria tarea de un fronent para que el cliente pueda redirigir al usuario a esa url y realizar el pago
+  async crearSesionDePago(pedidoConProductos: PedidoConProductos) {
+    const productos = await firstValueFrom(
+      this.cliente.send('create.pago.session', {
+        pedidoId: pedidoConProductos.id,
+        currency: 'USD', // dolares
+        items: pedidoConProductos.PedidoItems.map(item => ({
+          name: item.nombre,
+          price: item.precio,
+          quantity: item.cantidad
+        }))
+      }).pipe(
+        catchError((error) => { throw new RpcException(error); })
+      )
+    );
+    return productos;
+  }
+
+
+
+
+  // este metodo es para procesar el evento que emite el microservicio de pagos cuando se realiza un pago exitoso, y actualizar el estado del pedido a 'pagado' o algo similar
+  async pagoRealizado(payload: PedidoPagadoDto) {
+    this.logger.log('Procesando pago realizado para pedidoId:', {payload});
+    
+    // aqui hacemos los dos insert al mismo tiempo, esto es como una transaccion
+    // const pedidoActualizado =  
+    await this.prisma.pedido.update({
+      where: { id: payload.pedidoId },
+      data: {
+        status: 'PAGADO',
+        pagado: true,
+        pagadoEn: new Date(),
+        stripePagoId: payload.stripePagoId,
+        PedidoRecibos: {
+          create: {
+            reciboUrl: payload.reciboPagoURL
+          }
+        }
+      },
+      include: {
+        PedidoRecibos: true
+      } 
+    });
+    return
   }
 }
