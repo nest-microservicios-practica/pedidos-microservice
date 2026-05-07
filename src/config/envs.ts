@@ -1,8 +1,11 @@
 import * as joi from "joi";
 import 'dotenv/config';
 
+//*! no necesito la variable PORT porque el microservicio de auth no va a escuchar en un puerto, sino que va a recibir mensajes a través de NATS,
+// si la llegara a necesitar tendria que agregarla aca, en el main.ts para que sea un microservicio hibrido, en el docker-compose.yml y en el docker-compose.prod.yml,
+// microservicio de pagos es hibrido y sirve de ejemplo en el main.ts, ya que funciona con nats y expone puerto para peticiones http
 interface EnvVariables {
-  PORT: number;
+  // PORT: number;
   DATABASE_URL: string;
   // PRODUCTO_MICROSERVICE_HOST: string;
   // PRODUCTO_MICROSERVICE_PORT: number;
@@ -10,7 +13,7 @@ interface EnvVariables {
 }
 
 const envSchema = joi.object({
-  PORT: joi.number().required(),
+  // PORT: joi.number().required(),
   DATABASE_URL: joi.string().required(),
   // PRODUCTO_MICROSERVICE_HOST: joi.string().required(),
   // PRODUCTO_MICROSERVICE_PORT: joi.number().required(),
@@ -35,7 +38,7 @@ if (error) {
 const envVars: EnvVariables = value;
 
 export const envs = {
-  port: envVars?.PORT,
+  // port: envVars?.PORT,
   databaseUrl: envVars?.DATABASE_URL,
   // productoMicroserviceHost: envVars?.PRODUCTO_MICROSERVICE_HOST,
   // productoMicroservicePort: envVars?.PRODUCTO_MICROSERVICE_PORT,
