@@ -11,9 +11,12 @@ FROM node:24-alpine3.23 AS construccion_build
 
 WORKDIR /usr/src/app
 
-ARG PEDIDOS_DATABASE_URL
+# ARG PEDIDOS_DATABASE_URL
 
-ENV DATABASE_URL=$PEDIDOS_DATABASE_URL
+# ENV DATABASE_URL=$PEDIDOS_DATABASE_URL
+
+# lo siguiente es para que prisma genere el cliente, pero no se conecta a la base de datos, así que no importa que la URL sea falsa, es solo para que ejecute el 'prisma generate' sin problemas
+ENV DATABASE_URL=postgresql://postgres:12345@localhost:5432/pedidosdb?schema=public
 
 COPY --from=dependencias /usr/src/app/node_modules ./node_modules
 
